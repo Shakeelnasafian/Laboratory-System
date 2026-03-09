@@ -12,25 +12,22 @@ class OrderIndex extends Component
 
     public string $search = '';
     public string $status = '';
-    public string $date   = '';
+    public string $date = '';
 
-    public function updatingSearch(): void { $this->resetPage(); }
-
-    public function updateStatus(Order $order, string $status): void
+    public function updatingSearch(): void
     {
-        $order->update(['status' => $status]);
-        if ($status === 'sample_collected') $order->update(['collected_at' => now()]);
-        if ($status === 'completed') $order->update(['completed_at' => now()]);
+        $this->resetPage();
     }
 
     public function render()
     {
-        $orders = Order::with(['patient', 'items', 'invoice'])
-            ->when($this->search, fn($q) => $q
-                ->where('order_number', 'like', "%{$this->search}%")
-                ->orWhereHas('patient', fn($p) => $p->where('name', 'like', "%{$this->search}%")))
-            ->when($this->status, fn($q) => $q->where('status', $this->status))
-            ->when($this->date, fn($q) => $q->whereDate('created_at', $this->date))
+        $orders = Order::with(['patient', 'items.result', 'invoice'])
+            ->when($this->search, fn ($query) => $query->where(function ($inner) {
+                $inner->where('order_number', 'like', "%{$this->search}%")
+                    ->orWhereHas('patient', fn ($patientQuery) => $patientQuery->where('name', 'like', "%{$this->search}%"));
+            }))
+            ->when($this->status, fn ($query) => $query->where('status', $this->status))
+            ->when($this->date, fn ($query) => $query->whereDate('created_at', $this->date))
             ->latest()
             ->paginate(15);
 

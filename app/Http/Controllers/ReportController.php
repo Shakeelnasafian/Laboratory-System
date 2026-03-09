@@ -9,7 +9,16 @@ class ReportController extends Controller
 {
     public function orderReport(Order $order)
     {
-        $order->load(['patient', 'items.test', 'items.result.enteredBy', 'items.result.verifiedBy']);
+        abort_unless($order->canPrintReport(), 403, 'Release the report before printing it.');
+
+        $order->load([
+            'patient',
+            'items.test',
+            'items.sample',
+            'items.result.enteredBy',
+            'items.result.verifiedBy',
+            'items.result.releasedBy',
+        ]);
         $lab = auth()->user()->lab;
 
         $pdf = Pdf::loadView('reports.order', compact('order', 'lab'))

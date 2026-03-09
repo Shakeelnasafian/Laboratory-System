@@ -11,25 +11,40 @@ class OrderShow extends Component
 
     public function mount(Order $order): void
     {
-        $this->order = $order->load(['patient', 'items.test', 'items.result', 'invoice', 'createdBy']);
-    }
-
-    public function updateStatus(string $status): void
-    {
-        $this->order->update(['status' => $status]);
-        if ($status === 'sample_collected') $this->order->update(['collected_at' => now()]);
-        if ($status === 'completed') $this->order->update(['completed_at' => now()]);
-        $this->order->refresh();
-        session()->flash('success', 'Order status updated.');
+        $this->order = $order->load([
+            'patient',
+            'items.test',
+            'items.sample',
+            'items.assignedTo',
+            'items.result.enteredBy',
+            'items.result.verifiedBy',
+            'items.result.releasedBy',
+            'invoice',
+            'createdBy',
+        ]);
     }
 
     public function printReport()
     {
+        abort_unless($this->order->canPrintReport(), 403);
+
         return redirect()->route('lab.orders.report', $this->order);
     }
 
     public function render()
     {
+        $this->order->refresh()->load([
+            'patient',
+            'items.test',
+            'items.sample',
+            'items.assignedTo',
+            'items.result.enteredBy',
+            'items.result.verifiedBy',
+            'items.result.releasedBy',
+            'invoice',
+            'createdBy',
+        ]);
+
         return view('livewire.lab.orders.show')
             ->layout('layouts.lab', ['title' => 'Order #' . $this->order->order_number]);
     }

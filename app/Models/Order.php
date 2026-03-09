@@ -12,6 +12,20 @@ class Order extends Model
 {
     use BelongsToLab;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SAMPLE_COLLECTED = 'sample_collected';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUSES = [
+        self::STATUS_PENDING => 'Pending',
+        self::STATUS_SAMPLE_COLLECTED => 'Sample Collected',
+        self::STATUS_PROCESSING => 'Processing',
+        self::STATUS_COMPLETED => 'Completed',
+        self::STATUS_CANCELLED => 'Cancelled',
+    ];
+
     protected $fillable = [
         'lab_id', 'patient_id', 'created_by', 'order_number',
         'status', 'is_urgent', 'total_amount', 'discount',
@@ -25,14 +39,6 @@ class Order extends Model
         'net_amount' => 'decimal:2',
         'collected_at' => 'datetime',
         'completed_at' => 'datetime',
-    ];
-
-    const STATUSES = [
-        'pending'          => 'Pending',
-        'sample_collected' => 'Sample Collected',
-        'processing'       => 'Processing',
-        'completed'        => 'Completed',
-        'cancelled'        => 'Cancelled',
     ];
 
     public function patient(): BelongsTo
@@ -55,6 +61,41 @@ class Order extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function allResultsVerified(): bool
+    {
+        $this->loadMissing('items.result');
+
+        return $this->items->isNotEmpty() && $this->items->every(
+            fn (OrderItem $item) => $item->result && in_array($item->result->status, [Result::STATUS_VERIFIED, Result::STATUS_RELEASED], true)
+        );
+    }
+
+    public function allResultsReleased(): bool
+    {
+        $this->loadMissing('items.result');
+
+        return $this->items->isNotEmpty() && $this->items->every(
+            fn (OrderItem $item) => $item->result?->status === Result::STATUS_RELEASED
+        );
+    }
+
+    public function canReleaseReport(): bool
+    {
+        return $this->allResultsVerified();
+    }
+
+    public function canPrintReport(): bool
+    {
+        return $this->allResultsReleased();
+    }
+
+    public function criticalResultsCount(): int
+    {
+        $this->loadMissing('items.result');
+
+        return $this->items->filter(fn (OrderItem $item) => $item->result?->flag === Result::FLAG_CRITICAL)->count();
+    }
+
     protected static function boot(): void
     {
         parent::boot();
@@ -66,7 +107,7 @@ class Order extends Model
                     ->where('lab_id', $order->lab_id)
                     ->whereDate('created_at', today())
                     ->count() + 1;
-                $order->order_number = 'ORD-' . $date . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+                $order->order_number = 'ORD-' . $date . '-' . str_pad((string) $count, 3, '0', STR_PAD_LEFT);
             }
         });
     }

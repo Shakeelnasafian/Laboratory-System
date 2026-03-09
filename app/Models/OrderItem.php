@@ -8,7 +8,29 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class OrderItem extends Model
 {
-    protected $fillable = ['order_id', 'test_id', 'price', 'status'];
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SAMPLE_COLLECTED = 'sample_collected';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_COMPLETED = 'completed';
+
+    protected $fillable = [
+        'order_id',
+        'test_id',
+        'price',
+        'status',
+        'assigned_to',
+        'started_at',
+        'due_at',
+        'completed_at',
+        'processing_notes',
+    ];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'started_at' => 'datetime',
+        'due_at' => 'datetime',
+        'completed_at' => 'datetime',
+    ];
 
     public function order(): BelongsTo
     {
@@ -23,5 +45,22 @@ class OrderItem extends Model
     public function result(): HasOne
     {
         return $this->hasOne(Result::class);
+    }
+
+    public function sample(): HasOne
+    {
+        return $this->hasOne(Sample::class);
+    }
+
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->due_at !== null
+            && $this->status !== self::STATUS_COMPLETED
+            && now()->greaterThan($this->due_at);
     }
 }

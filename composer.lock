@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0a059cf435f0b239cd5eb66549b6244f",
+    "content-hash": "6ab3c58e0e6e0b3a3968d322f5e268a8",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -3809,6 +3809,41 @@
                 "source": "https://github.com/MyIntervals/PHP-CSS-Parser/tree/v9.3.0"
             },
             "time": "2026-03-03T17:31:43+00:00"
+        },
+        {
+            "name": "shakeelnasafian/laravel-spatie-permission-manager",
+            "version": "0.1.0",
+            "dist": {
+                "type": "path",
+                "url": "../laravel-permissions-ui",
+                "reference": "fadcba5d687ff4acd82a304fb6efc2d1a7281233"
+            },
+            "require": {
+                "laravel/framework": "^10.0|^11.0|^12.0",
+                "php": "^8.1",
+                "spatie/laravel-permission": "^6.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Shakeelnasafian\\PermissionManager\\PermissionManagerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Shakeelnasafian\\PermissionManager\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Elegant UI for managing spatie/laravel-permission roles and permissions",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "spatie/laravel-permission",
