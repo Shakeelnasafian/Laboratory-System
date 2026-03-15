@@ -83,6 +83,16 @@
             @if(session('error'))
                 <div class="mb-2 rounded-xl border border-red-300 bg-red-100 px-4 py-2 text-sm text-red-800">{{ session('error') }}</div>
             @endif
+            @php $lab = auth()->user()?->lab; @endphp
+            @if($lab && $lab->isSubscriptionExpired())
+                <div class="mb-2 rounded-xl border border-red-400 bg-red-50 px-4 py-2 text-sm text-red-800 font-medium">
+                    Your subscription has expired. Please contact the administrator to renew access.
+                </div>
+            @elseif($lab && $lab->subscriptionDaysLeft() <= 14)
+                <div class="mb-2 rounded-xl border border-yellow-400 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
+                    Your subscription expires in {{ $lab->subscriptionDaysLeft() }} day(s). Please renew soon.
+                </div>
+            @endif
         </div>
 
         <main class="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">

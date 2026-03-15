@@ -25,6 +25,11 @@
                     <option value="other">Other</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
+                <input wire:model.live="dob" type="date" max="{{ date('Y-m-d') }}" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                @error('dob') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
             <div class="flex gap-2">
                 <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Age</label>

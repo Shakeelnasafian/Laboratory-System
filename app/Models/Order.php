@@ -7,10 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Order extends Model
 {
-    use BelongsToLab;
+    use BelongsToLab, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status', 'is_urgent', 'discount', 'net_amount', 'notes'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_SAMPLE_COLLECTED = 'sample_collected';

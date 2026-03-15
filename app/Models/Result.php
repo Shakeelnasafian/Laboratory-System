@@ -5,9 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Result extends Model
 {
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['value', 'unit', 'flag', 'status', 'remarks', 'is_abnormal'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
     public const FLAG_NORMAL = 'normal';
     public const FLAG_HIGH = 'high';
     public const FLAG_LOW = 'low';

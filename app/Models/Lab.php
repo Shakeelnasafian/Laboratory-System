@@ -42,4 +42,18 @@ class Lab extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    public function isSubscriptionExpired(): bool
+    {
+        return $this->subscription_expires_at !== null && $this->subscription_expires_at->isPast();
+    }
+
+    public function subscriptionDaysLeft(): int
+    {
+        if (! $this->subscription_expires_at) {
+            return PHP_INT_MAX;
+        }
+
+        return max(0, (int) now()->diffInDays($this->subscription_expires_at, false));
+    }
 }

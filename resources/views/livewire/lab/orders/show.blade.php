@@ -1,4 +1,19 @@
-<div class="max-w-6xl mx-auto space-y-6">
+<div class="max-w-6xl mx-auto space-y-6" x-data="{ confirmCancel: false }">
+    {{-- Cancel confirmation modal --}}
+    <div x-show="confirmCancel" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" x-transition>
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Cancel Order?</h3>
+            <p class="text-sm text-gray-600 mb-5">This will mark order <span class="font-mono font-medium">{{ $order->order_number }}</span> as cancelled. This action cannot be undone.</p>
+            <div class="flex gap-3 justify-end">
+                <button @click="confirmCancel = false" class="border px-4 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100">Keep Order</button>
+                <button wire:click="cancelOrder" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
+                    <span wire:loading.remove wire:target="cancelOrder">Yes, Cancel</span>
+                    <span wire:loading wire:target="cancelOrder">Cancelling...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -17,6 +32,9 @@
                 <a href="{{ route('lab.samples.collection') }}" wire:navigate class="border px-4 py-2 rounded-lg text-sm">Samples</a>
                 <a href="{{ route('lab.worklists.index') }}" wire:navigate class="border px-4 py-2 rounded-lg text-sm">Worklists</a>
                 <a href="{{ route('lab.results.release') }}" wire:navigate class="border px-4 py-2 rounded-lg text-sm">Release Queue</a>
+                @if(in_array($order->status, [\App\Models\Order::STATUS_PENDING, \App\Models\Order::STATUS_SAMPLE_COLLECTED]))
+                    <button @click="confirmCancel = true" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-50">Cancel Order</button>
+                @endif
             </div>
         </div>
 
