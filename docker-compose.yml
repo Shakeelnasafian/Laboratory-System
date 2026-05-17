@@ -1,55 +1,51 @@
-services:
-  lab-nginx:
-    image: nginx:alpine
-    ports:
-      - "8082:80"
-    volumes:
-      - .:/var/www/html
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      lab-php:
-        condition: service_healthy
-    networks:
-      - shared-network
+# LOCAL DEVELOPMENT ONLY — not used by Render.
+# Render deploys via render.yaml (Neon Postgres). This compose file runs the
+# exact same production image against a throwaway local Postgres so you can
+# validate the container locally with one command:
+#
+#     docker compose up --build
+#
+# Then open http://localhost:8080  (health: http://localhost:8080/up)
 
-  # ---- PHP Application ----
-  lab-php:
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: laboratory
+      POSTGRES_USER: laboratory
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"          # exposed so you can inspect with a local client
+    volumes:
+      - lab-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laboratory -d laboratory"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: runs migrations + seeders, then exits. The app waits for it.
+  migrate:
     build:
       context: .
       dockerfile: Dockerfile
-    image: laboratory-system-lab-php:latest    # 👈 name the image
-    volumes:
-      - .:/var/www/html
-    networks:
-      shared-network:
-        aliases:
-          - lab-php
-    healthcheck:
-      test: ["CMD", "php-fpm", "-t"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+    image: laboratory:render
+    command: php artisan migrate --force --seed
+    env_file: .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
 
-  # ---- Queue Worker ----
-  lab-horizon:
-    image: laboratory-system-lab-php:latest    # 👈 reuse same image
-    command: php artisan queue:listen --tries=3
-    volumes:
-      - .:/var/www/html
-    networks:
-      - shared-network
+  app:
+    image: laboratory:render          # reuse the image built by `migrate`
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env.docker
+    ports:
+      - "8080:8080"                   # host 8080 -> FrankenPHP in container
+    restart: unless-stopped
 
-  # ---- Scheduler ----
-  lab-scheduler:
-    image: laboratory-system-lab-php:latest
-    command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
-    volumes:
-      - .:/var/www/html
-    networks:
-      - shared-network
-
-networks:
-  shared-network:
-    external: true
-    name: shared-network
+volumes:
+  lab-db-data:

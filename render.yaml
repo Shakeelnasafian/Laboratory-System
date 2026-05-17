@@ -1,0 +1,75 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# All-in-one topology: a single Docker web service runs FrankenPHP (web),
+# the queue worker, and the scheduler via Supervisor. To split the worker
+# into its own service later, uncomment the second service block — no image
+# changes are required (it reuses the same Dockerfile + a custom command).
+
+services:
+  - type: web
+    name: laboratory
+    runtime: docker
+    plan: starter            # 'free' also works but autosuspends + no preDeployCommand
+    region: oregon           # pick the region closest to your Neon project
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /up     # Laravel's built-in health route (bootstrap/app.php)
+
+    # Runs ONCE per deploy, before traffic is shifted. Requires a paid plan.
+    # On the free plan, remove this and instead uncomment the migrate line
+    # in docker/entrypoint.sh.
+    preDeployCommand: "php artisan migrate --force"
+
+    envVars:
+      - key: APP_NAME
+        value: Laboratory
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false          # set in dashboard: output of `php artisan key:generate --show`
+      - key: APP_URL
+        sync: false          # e.g. https://laboratory.onrender.com (set after first deploy)
+
+      - key: LOG_CHANNEL
+        value: stderr        # stream logs to Render's live log viewer
+      - key: LOG_LEVEL
+        value: warning
+
+      # ---- Neon Postgres ----
+      # Use Neon's POOLED connection string (host contains "-pooler").
+      # Format: postgresql://USER:PASSWORD@ep-xxx-pooler.REGION.aws.neon.tech/DB
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        sync: false          # paste the pooled Neon connection string here
+      - key: DB_SSLMODE
+        value: require       # Neon mandates TLS
+
+      # ---- Database-backed drivers (no Redis needed) ----
+      - key: SESSION_DRIVER
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: database
+
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+
+  # ---------------------------------------------------------------------------
+  # OPTIONAL: dedicated queue worker (split out for independent scaling).
+  # If you enable this, remove the [program:queue] block from
+  # docker/supervisord.conf so the job isn't processed twice.
+  # ---------------------------------------------------------------------------
+  # - type: worker
+  #   name: laboratory-worker
+  #   runtime: docker
+  #   plan: starter
+  #   region: oregon
+  #   dockerfilePath: ./Dockerfile
+  #   dockerCommand: "php /app/artisan queue:work --sleep=3 --tries=3 --max-time=3600"
+  #   envVars:
+  #     - fromGroup: laboratory-env   # share env via an env group, or repeat keys

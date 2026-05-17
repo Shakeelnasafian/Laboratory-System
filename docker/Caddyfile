@@ -1,0 +1,25 @@
+{
+	# Render terminates TLS at its edge proxy; serve plain HTTP internally.
+	auto_https off
+	admin off
+	# Silence the default FrankenPHP Octane worker; classic mode = full
+	# Livewire/Blade compatibility with no per-request state concerns.
+	frankenphp
+}
+
+# Render provides $PORT (defaults to 10000). Fall back to 8080 for local runs.
+:{$PORT:8080} {
+	root * /app/public
+
+	encode zstd br gzip
+
+	# Serve Vite build assets and static files directly, route the rest to PHP.
+	php_server {
+		index index.php
+	}
+
+	log {
+		output stderr
+		format console
+	}
+}
