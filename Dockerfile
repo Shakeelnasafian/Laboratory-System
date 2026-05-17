@@ -62,6 +62,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends supervisor \
     && rm -rf /var/lib/apt/lists/*
 
+# Strip Linux file capabilities from the FrankenPHP binary. The dunglas image
+# sets cap_net_bind_service so it can bind :80/:443, but we bind Render's high
+# $PORT (10000) instead. Exec'ing a capability-carrying binary under Supervisor
+# in Render's restricted runtime fails with "EPERM" (exit 127) — remove them.
+RUN setcap -r "$(command -v frankenphp)" || true
+
 WORKDIR /app
 
 # Production PHP + opcache tuning
