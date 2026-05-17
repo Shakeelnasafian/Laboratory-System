@@ -13,9 +13,12 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Source needed for Vite input + Tailwind class scanning
+# Source needed for Vite input + Tailwind class scanning.
+# tailwind.config.js + postcss.config.js are REQUIRED here — without
+# postcss.config.js, PostCSS never runs Tailwind and the built CSS ships
+# with none of the utility classes (page renders unstyled).
 COPY resources/ resources/
-COPY vite.config.js ./
+COPY vite.config.js tailwind.config.js postcss.config.js ./
 RUN npm run build
 
 # ---------------------------------------------------------------------------
