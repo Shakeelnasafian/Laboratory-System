@@ -2,11 +2,20 @@
 
 A multi-tenant Laboratory Information System for diagnostic labs in Pakistan. It covers patient registration, order intake, sample workflow, worklists, results, billing, report release, and PDF report printing.
 
+## Live Demo
+
+**🔗 [laboratory-system-ruiv.onrender.com](https://laboratory-system-ruiv.onrender.com/)**
+
+Hosted on Render (Docker) with a Neon PostgreSQL database. Sign in with any account from [Default Credentials](#default-credentials) — e.g. Super Admin `admin@labsystem.pk` / `admin@12345`.
+
+> Note: the instance may cold-start (Render free tier autosuspend + Neon scale-to-zero), so the first request after idle can take a few seconds.
+
 ## Tech Stack
 
 - Backend: Laravel 12, PHP 8.2+
 - Frontend: Livewire 4, Alpine.js (via Livewire), Tailwind CSS
-- Database: MySQL
+- Database: PostgreSQL in production (Neon); SQLite/MySQL supported locally
+- Deployment: Docker (FrankenPHP), Render, Neon Postgres
 - Packages: Spatie Laravel Permission, barryvdh/laravel-dompdf, Laravel Breeze
 
 ## Features
@@ -99,6 +108,60 @@ npm run dev
 # In a separate terminal:
 php artisan serve
 ```
+
+## Deployment (Render + Neon + Docker)
+
+The app is deployed to [Render](https://render.com) as a Docker service backed by a [Neon](https://neon.tech) PostgreSQL database. Live: [laboratory-system-ruiv.onrender.com](https://laboratory-system-ruiv.onrender.com/).
+
+### Architecture
+
+- **Runtime:** FrankenPHP (classic mode — full Livewire compatibility), single image.
+- **Topology:** all-in-one container — web + queue worker + scheduler managed by Supervisor.
+- **Database:** Neon Postgres. Session, cache, and queue all use the `database` driver (no Redis).
+
+### Relevant files
+
+| File | Purpose |
+| --- | --- |
+| `Dockerfile` | Multi-stage build: Vite assets → Composer (no-dev) → FrankenPHP runtime |
+| `docker/Caddyfile` | FrankenPHP config; binds to Render's `$PORT` |
+| `docker/supervisord.conf` | Runs web + `queue:work` + `schedule:work` |
+| `docker/entrypoint.sh` | Runtime cache warmup + storage link |
+| `render.yaml` | Render blueprint (service, env vars, health check `/up`) |
+| `docker-compose.yml` | Local-only: runs the same image against a throwaway Postgres |
+
+### Required environment variables (set in Render dashboard)
+
+| Key | Notes |
+| --- | --- |
+| `APP_KEY` | `php artisan key:generate --show` |
+| `APP_URL` | `https://laboratory-system-ruiv.onrender.com` |
+| `DB_CONNECTION` | `pgsql` |
+| `DB_URL` | Neon **pooled** connection string (host contains `-pooler`) |
+| `DB_SSLMODE` | `require` (Neon mandates TLS) |
+
+### Neon migration note
+
+Migrations are run manually against the Neon database:
+
+```bash
+php artisan migrate:fresh --force --seed
+```
+
+Each migration sets `public $withinTransaction = false;` so statements auto-commit
+individually instead of being wrapped in one transaction — this avoids the
+`SQLSTATE[25P02]` failure that occurs when multi-statement DDL transactions run
+through Neon's pooled (PgBouncer) endpoint.
+
+### Run the production image locally
+
+```bash
+docker compose up --build
+# then open http://localhost:8080  (health: /up)
+```
+
+This uses a local Postgres container (config in `.env.docker`) — it does **not**
+touch Neon or production.
 
 ## Seeders
 
