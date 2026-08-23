@@ -112,7 +112,6 @@ class Dashboard extends Component
                 'today_orders',
                 'Today\'s Orders',
                 (string) $todayOrders,
-                $ordersTrend,
                 'Order intake across the last 7 days',
                 $this->differenceLabel($ordersTrend, 'vs yesterday')
             ),
@@ -120,7 +119,6 @@ class Dashboard extends Component
                 'today_patients',
                 'Today\'s Patients',
                 (string) $todayPatients,
-                $patientsTrend,
                 'Registration flow across the last week',
                 $this->differenceLabel($patientsTrend, 'vs yesterday')
             ),
@@ -128,7 +126,6 @@ class Dashboard extends Component
                 'pending_collection',
                 'Pending Collection',
                 (string) $pendingCollection,
-                $pendingCollectionTrend,
                 'Items still waiting at collection or recollect',
                 $this->differenceLabel($pendingCollectionTrend, 'queue drift')
             ),
@@ -136,7 +133,6 @@ class Dashboard extends Component
                 'processing_items',
                 'In Processing',
                 (string) $processingItems,
-                $processingTrend,
                 'Bench workload currently in motion',
                 $this->differenceLabel($processingTrend, 'bench momentum')
             ),
@@ -144,7 +140,6 @@ class Dashboard extends Component
                 'overdue_items',
                 'Overdue Items',
                 (string) $overdueItems,
-                $overdueTrend,
                 'Turnaround pressure over the last 7 days',
                 $this->differenceLabel($overdueTrend, 'risk change')
             ),
@@ -152,7 +147,6 @@ class Dashboard extends Component
                 'completed_items',
                 'Completed Today',
                 (string) $completedItemsToday,
-                $completedTrend,
                 'Finished bench items and validated output',
                 $this->differenceLabel($completedTrend, 'vs yesterday')
             ),
@@ -160,7 +154,6 @@ class Dashboard extends Component
                 'today_revenue',
                 'Today\'s Revenue',
                 'Rs. ' . number_format($todayRevenue),
-                $revenueTrend,
                 'Collections captured across the last week',
                 $this->differenceLabel($revenueTrend, 'vs yesterday', true)
             ),
@@ -168,7 +161,6 @@ class Dashboard extends Component
                 'total_patients',
                 'Total Patients',
                 (string) $totalPatients,
-                $totalPatientsTrend,
                 'Cumulative patient base over the last 7 days',
                 $this->windowGrowthLabel($totalPatientsTrend)
             ),
@@ -248,7 +240,6 @@ class Dashboard extends Component
         string $metricKey,
         string $label,
         string $value,
-        array $series,
         string $subtitle,
         string $trendLabel
     ): array {
@@ -261,7 +252,6 @@ class Dashboard extends Component
             'trendLabel' => $trendLabel,
             'accent' => $palette['accent'],
             'soft' => $palette['soft'],
-            'spark' => $this->sparkline($series),
         ];
     }
 
@@ -293,45 +283,5 @@ class Dashboard extends Component
         }
 
         return ($growth > 0 ? '+' : '-') . number_format(abs($growth)) . ' in 7 days';
-    }
-
-    private function sparkline(array $series): array
-    {
-        $values = array_values($series);
-        $count = count($values);
-        $width = 148;
-        $height = 56;
-        $paddingX = 4;
-        $paddingY = 6;
-        $graphHeight = $height - ($paddingY * 2);
-        $graphWidth = $width - ($paddingX * 2);
-        $maxValue = max($values ?: [0, 1]);
-        $range = $maxValue > 0 ? $maxValue : 1;
-
-        $points = collect($values)->map(function (float $value, int $index) use ($count, $graphHeight, $graphWidth, $height, $paddingX, $paddingY, $range) {
-            $x = $count === 1
-                ? $paddingX + ($graphWidth / 2)
-                : $paddingX + ($index * ($graphWidth / max($count - 1, 1)));
-            $y = $height - $paddingY - (($value / $range) * $graphHeight);
-
-            return [
-                'x' => round($x, 2),
-                'y' => round($y, 2),
-            ];
-        });
-
-        $path = $points->map(fn (array $point, int $index) => ($index === 0 ? 'M' : 'L') . $point['x'] . ',' . $point['y'])->implode(' ');
-        $firstPoint = $points->first();
-        $lastPoint = $points->last();
-        $baseline = $height - $paddingY;
-        $area = $path . ' L' . $lastPoint['x'] . ',' . $baseline . ' L' . $firstPoint['x'] . ',' . $baseline . ' Z';
-
-        return [
-            'path' => $path,
-            'area' => $area,
-            'lastX' => $lastPoint['x'],
-            'lastY' => $lastPoint['y'],
-            'values' => $values,
-        ];
     }
 }

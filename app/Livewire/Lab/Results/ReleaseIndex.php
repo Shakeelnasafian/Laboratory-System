@@ -38,8 +38,11 @@ class ReleaseIndex extends Component
 
     public function render()
     {
-        $orders = Order::query()
-            ->with(['patient', 'items.test', 'items.result'])
+        // The count-based filters reference withCount aliases. MySQL allows
+        // SELECT aliases in HAVING; PostgreSQL does not. Build the counted
+        // query as a subquery and filter its columns in an outer WHERE so it
+        // works on both engines.
+        $counted = Order::query()
             ->withCount([
                 'items as item_count',
                 'items as ready_item_count' => fn (Builder $query) => $query->whereHas('result', fn (Builder $resultQuery) => $resultQuery->whereIn('status', [Result::STATUS_VERIFIED, Result::STATUS_RELEASED])),
@@ -50,10 +53,19 @@ class ReleaseIndex extends Component
             ->when($this->search, fn (Builder $query) => $query->where(function (Builder $inner) {
                 $inner->where('order_number', 'like', "%{$this->search}%")
                     ->orWhereHas('patient', fn (Builder $patientQuery) => $patientQuery->where('name', 'like', "%{$this->search}%"));
-            }))
-            ->when($this->queue === 'ready', fn (Builder $query) => $query->havingRaw('item_count > 0 and ready_item_count = item_count and released_item_count < item_count'))
-            ->when($this->queue === 'released', fn (Builder $query) => $query->havingRaw('item_count > 0 and released_item_count = item_count'))
-            ->when($this->queue === 'critical', fn (Builder $query) => $query->havingRaw('critical_item_count > 0'))
+            }));
+
+        $orders = Order::query()
+            ->with(['patient', 'items.test', 'items.result'])
+            ->fromSub($counted, 'orders')
+            ->when($this->queue === 'ready', fn (Builder $query) => $query
+                ->where('item_count', '>', 0)
+                ->whereColumn('ready_item_count', 'item_count')
+                ->whereColumn('released_item_count', '<', 'item_count'))
+            ->when($this->queue === 'released', fn (Builder $query) => $query
+                ->where('item_count', '>', 0)
+                ->whereColumn('released_item_count', 'item_count'))
+            ->when($this->queue === 'critical', fn (Builder $query) => $query->where('critical_item_count', '>', 0))
             ->latest()
             ->paginate(12);
 

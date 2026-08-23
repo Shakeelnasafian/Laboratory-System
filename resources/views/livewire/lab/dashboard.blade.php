@@ -1,5 +1,5 @@
 <div>
-    <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         @foreach($statCards as $card)
             <article
                 class="dashboard-metric-card group"
@@ -7,34 +7,13 @@
             >
                 <div class="dashboard-metric-content">
                     <div class="dashboard-metric-header">
-                        <div class="min-w-0">
-                            <p class="dashboard-metric-label">{{ $card['label'] }}</p>
-                        </div>
-                        <div class="shrink-0">
-                            <span class="dashboard-metric-pill">{{ $card['trendLabel'] }}</span>
-                        </div>
+                        <p class="dashboard-metric-label">{{ $card['label'] }}</p>
+                        <span class="dashboard-metric-pill">{{ $card['trendLabel'] }}</span>
                     </div>
 
                     <div class="dashboard-metric-body">
                         <p class="dashboard-metric-value">{{ $card['value'] }}</p>
                         <p class="dashboard-metric-subtitle">{{ $card['subtitle'] }}</p>
-                    </div>
-
-                    <div class="dashboard-metric-chart">
-                        <svg viewBox="0 0 148 56" class="h-[4.5rem] w-full" aria-hidden="true">
-                            <defs>
-                                <linearGradient id="metric-area-{{ $loop->index }}" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stop-color="var(--metric-accent)" stop-opacity="0.35" />
-                                    <stop offset="100%" stop-color="var(--metric-accent)" stop-opacity="0.02" />
-                                </linearGradient>
-                            </defs>
-                            <path d="M4 46 H144" fill="none" stroke="var(--ui-dashboard-grid-strong)" stroke-width="1" stroke-dasharray="4 4" />
-                            <path d="M4 18 H144" fill="none" stroke="var(--ui-dashboard-grid-soft)" stroke-width="1" stroke-dasharray="4 4" />
-                            <path d="{{ $card['spark']['area'] }}" fill="url(#metric-area-{{ $loop->index }})" />
-                            <path d="{{ $card['spark']['path'] }}" fill="none" stroke="var(--metric-accent)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" />
-                            <circle cx="{{ $card['spark']['lastX'] }}" cy="{{ $card['spark']['lastY'] }}" r="4.5" fill="white" stroke="var(--metric-accent)" stroke-width="2" />
-                            <circle cx="{{ $card['spark']['lastX'] }}" cy="{{ $card['spark']['lastY'] }}" r="8" fill="var(--metric-accent)" opacity="0.10" />
-                        </svg>
                     </div>
                 </div>
             </article>
