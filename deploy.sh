@@ -4,16 +4,18 @@
 #   ./deploy.sh https://your-domain.com     # first time (domain optional)
 #   ./deploy.sh                             # every later update
 #
-# Installs Docker if missing, creates secrets once (.env.deploy), builds the
-# image, starts app + Postgres, runs migrations and, on a brand-new database,
-# creates the Super Admin with a random password (printed once).
+# Uses the fixed "laboratory" Compose project so updates find the same
+# containers and named volumes regardless of the checkout directory.
+# The database is created only if it does not exist; an existing database
+# container is never recreated by this script. The app image is rebuilt and
+# the app container is updated separately.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 [ "$(id -u)" -eq 0 ] || exec sudo -E bash "$0" "$@"
 
 ENV_FILE=.env.deploy
-COMPOSE="docker compose --env-file $ENV_FILE -f docker-compose.prod.yml"
+COMPOSE="docker compose -p laboratory --env-file $ENV_FILE -f docker-compose.prod.yml"
 
 set_kv() { # set_kv KEY VALUE  -> upsert in $ENV_FILE
     if grep -q "^$1=" "$ENV_FILE"; then sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"; else echo "$1=$2" >> "$ENV_FILE"; fi
@@ -59,14 +61,21 @@ if [ -n "${1:-}" ]; then
     case "$1" in https://*) set_kv SESSION_SECURE_COOKIE true ;; *) set_kv SESSION_SECURE_COOKIE false ;; esac
 fi
 
-# 4. Update code, build, start ------------------------------------------------
+# 4. Update code, ensure the database exists, then update only the app -------
 if [ -d .git ]; then
     git -c safe.directory="$PWD" pull --ff-only || echo "(git pull skipped)"
 fi
-echo "==> Building and starting containers..."
-$COMPOSE up -d --build --remove-orphans
 
-# 5. Wait until healthy (migrations run during start) ---------------------------
+echo "==> Ensuring the existing database is running (create only if absent)..."
+# --no-recreate preserves an existing PostgreSQL container and its configuration.
+# If no db container exists for this Compose project, Compose creates it normally.
+$COMPOSE up -d --no-recreate db
+
+echo "==> Building and updating the application (database will not be recreated)..."
+# --no-deps prevents this app update from touching the database service.
+$COMPOSE up -d --build --no-deps app
+
+# 5. Wait until healthy (migrations run during start) -------------------------
 port=$(grep '^APP_PORT=' "$ENV_FILE" | cut -d= -f2 || true)
 port=${port:-8080}
 echo "==> Waiting for the app on 127.0.0.1:$port ..."
@@ -78,7 +87,7 @@ if [ -z "${ok:-}" ]; then
     echo "!! App did not become healthy. Logs:"; $COMPOSE logs --tail 40 app; exit 1
 fi
 
-# 6. First run only: create roles + Super Admin with a random password ---------
+# 6. First run only: create roles + Super Admin with a random password --------
 users=$($COMPOSE exec -T app php artisan tinker --execute='echo App\Models\User::count();' | tr -dc '0-9')
 if [ "${users:-1}" = "0" ]; then
     pw=$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-16)
