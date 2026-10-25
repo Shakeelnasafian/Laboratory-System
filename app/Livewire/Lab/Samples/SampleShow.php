@@ -43,23 +43,24 @@ class SampleShow extends Component
         $this->fillEntries();
     }
 
-    public function updatedEntries($value, string $key): void
+    /**
+     * $key is "{itemId}.{field}" for a single field, or null when the client
+     * sends the whole grid at once (it does this when several fields changed).
+     */
+    public function updatedEntries($value, ?string $key = null): void
     {
+        if ($key === null) {
+            foreach (array_keys($this->entries) as $itemId) {
+                $this->suggestFlag($itemId);
+            }
+
+            return;
+        }
+
         [$itemId, $field] = array_pad(explode('.', $key, 2), 2, null);
 
-        if (! in_array($field, ['value', 'normal_range'], true) || ! isset($this->entries[$itemId])) {
-            return;
-        }
-
-        // Critical is a clinical judgement; never auto-replace it.
-        if ($this->entries[$itemId]['flag'] === Result::FLAG_CRITICAL) {
-            return;
-        }
-
-        $suggested = Result::suggestFlag($this->entries[$itemId]['value'], $this->entries[$itemId]['normal_range']);
-
-        if ($suggested) {
-            $this->entries[$itemId]['flag'] = $suggested;
+        if (in_array($field, ['value', 'normal_range'], true)) {
+            $this->suggestFlag($itemId);
         }
     }
 
@@ -226,6 +227,22 @@ class SampleShow extends Component
                 'remarks' => (string) ($item->result?->remarks ?? ''),
             ]])
             ->all();
+    }
+
+    protected function suggestFlag(int|string $itemId): void
+    {
+        $entry = $this->entries[$itemId] ?? null;
+
+        // Critical is a clinical judgement; never auto-replace it.
+        if (! is_array($entry) || ($entry['flag'] ?? null) === Result::FLAG_CRITICAL) {
+            return;
+        }
+
+        $suggested = Result::suggestFlag((string) ($entry['value'] ?? ''), (string) ($entry['normal_range'] ?? ''));
+
+        if ($suggested) {
+            $this->entries[$itemId]['flag'] = $suggested;
+        }
     }
 
     protected function entryChanged(OrderItem $item, array $entry): bool

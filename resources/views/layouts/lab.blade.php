@@ -52,19 +52,20 @@
                         </svg>
                     </button>
 
-                    <button
-                        type="button"
-                        class="hidden h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-100 lg:inline-flex"
-                        @click="$store.labSidebar.toggleMini()"
-                    >
-                        <span class="sr-only">Toggle sidebar width</span>
-                        <svg x-show="!$store.labSidebar.mini" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        <svg x-show="$store.labSidebar.mini" x-cloak xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
+                    @unless(request()->routeIs('lab.dashboard'))
+                        {{-- Back to the previous screen; the sidebar has its own collapse toggle. --}}
+                        <button
+                            type="button"
+                            class="inline-flex h-10 items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-600 transition hover:bg-gray-100"
+                            @click="history.length > 1 ? history.back() : Livewire.navigate('{{ route('lab.dashboard') }}')"
+                            title="Back"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span class="hidden sm:inline">Back</span>
+                        </button>
+                    @endunless
 
                     <div>
                         <h1 class="text-lg font-semibold text-gray-800 sm:text-2xl">{{ $title ?? 'Dashboard' }}</h1>
