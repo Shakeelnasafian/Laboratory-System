@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 #
-# Render deployment image: FrankenPHP (classic mode) + Neon Postgres.
+# Self-contained production image: FrankenPHP (classic mode) + Postgres.
 # Single all-in-one container: web + queue worker + scheduler via Supervisor.
+# Build once, run anywhere: deps + assets are built here; on start the
+# entrypoint creates .env, generates APP_KEY if absent and runs migrations.
 
 # ---------------------------------------------------------------------------
 # Stage 1: Build front-end assets (Vite + Tailwind) with Node
@@ -93,14 +95,21 @@ RUN composer dump-autoload --no-dev --optimize --classmap-authoritative \
 COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 COPY docker/supervisord.conf /etc/supervisor/conf.d/app.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
-RUN chmod +x /usr/local/bin/entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint \
+    && chmod +x /usr/local/bin/entrypoint
 
-# Laravel writable dirs (Render runs containers as root by default)
-RUN chown -R www-data:www-data storage bootstrap/cache \
+# Laravel writable dirs (.dockerignore strips their contents, so recreate).
+RUN mkdir -p storage/app/public storage/framework/cache/data \
+        storage/framework/sessions storage/framework/views storage/logs \
+        bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Documentation only — Render injects $PORT, Caddyfile binds to it.
-EXPOSE 10000
+# Caddy binds to $PORT (default 8080); platforms like Render inject their own.
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS "http://localhost:${PORT:-8080}/up" || exit 1
 
 ENTRYPOINT ["entrypoint"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/app.conf", "-n"]
