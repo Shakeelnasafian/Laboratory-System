@@ -38,7 +38,7 @@
                                 <input type="checkbox" value="{{ $item->id }}" wire:model="selectedItems" class="mt-1 rounded border-gray-300">
                             </td>
                             <td class="px-6 py-4 align-top">
-                                <a href="{{ route('lab.orders.show', $item->order) }}" wire:navigate class="app-link-primary font-medium">{{ $item->order->order_number }}</a>
+                                <a href="{{ route('lab.samples.show', $item->order) }}" wire:navigate class="app-link-primary font-medium">{{ $item->order->order_number }}</a>
                                 @if($item->order->is_urgent)
                                     <div class="mt-1 text-xs font-semibold text-red-600">URGENT</div>
                                 @endif

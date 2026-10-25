@@ -23,7 +23,7 @@
                     @forelse($samples as $sample)
                         <tr>
                             <td class="px-6 py-4 align-top whitespace-nowrap font-mono text-red-600">{{ $sample->accession_number }}</td>
-                            <td class="px-6 py-4 align-top"><a href="{{ route('lab.orders.show', $sample->orderItem->order) }}" wire:navigate class="app-link-primary">{{ $sample->orderItem->order->order_number }}</a></td>
+                            <td class="px-6 py-4 align-top"><a href="{{ route('lab.samples.show', $sample->orderItem->order) }}" wire:navigate class="app-link-primary">{{ $sample->orderItem->order->order_number }}</a></td>
                             <td class="px-6 py-4 align-top">{{ $sample->orderItem->order->patient->name }}</td>
                             <td class="px-6 py-4 align-top">{{ $sample->orderItem->test->name }}</td>
                             <td class="px-6 py-4 align-top text-sm text-gray-600">{{ $sample->rejection_reason }}</td>

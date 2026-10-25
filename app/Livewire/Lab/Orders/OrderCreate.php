@@ -29,6 +29,9 @@ class OrderCreate extends Component
     public string $paid_amount = '0';
     public string $payment_method = 'cash';
 
+    // Walk-in labs take the sample at the counter, so default to collected.
+    public bool $collect_now = true;
+
     public function updatedPatientSearch(): void
     {
         $search = trim($this->patient_search);
@@ -290,11 +293,15 @@ class OrderCreate extends Component
                 'payment_method' => $this->payment_method,
             ]);
 
+            if ($this->collect_now && auth()->user()->canCollectSamples()) {
+                $workflow->collectOrderSamples($order, auth()->user());
+            }
+
             return $order;
         });
 
         session()->flash('success', "Order #{$createdOrder->order_number} created successfully.");
-        $this->redirect(route('lab.orders.show', $createdOrder), navigate: true);
+        $this->redirect(route('lab.samples.show', $createdOrder), navigate: true);
     }
 
     public function render()

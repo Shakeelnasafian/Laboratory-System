@@ -48,7 +48,7 @@
                         <td class="px-6 py-3 align-top font-mono text-xs text-gray-500">{{ $inv->invoice_number }}</td>
                         <td class="px-6 py-3 align-top font-medium text-gray-800 dark:text-white">{{ $inv->order->patient->name ?? '-' }}</td>
                         <td class="px-6 py-3 align-top">
-                            <a href="{{ route('lab.orders.show', $inv->order_id) }}" wire:navigate class="app-link-primary text-xs">{{ $inv->order->order_number }}</a>
+                            <a href="{{ route('lab.orders.show', $inv->order) }}" wire:navigate class="app-link-primary text-xs">{{ $inv->order->order_number }}</a>
                         </td>
                         <td class="px-6 py-3 align-top whitespace-nowrap text-right text-gray-700 dark:text-gray-200">Rs. {{ number_format($inv->total) }}</td>
                         <td class="px-6 py-3 align-top whitespace-nowrap text-right text-green-600">Rs. {{ number_format($inv->paid_amount) }}</td>

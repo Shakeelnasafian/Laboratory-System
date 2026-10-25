@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToLab;
+use App\Traits\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
@@ -10,7 +11,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Patient extends Model
 {
-    use BelongsToLab, LogsActivity;
+    use BelongsToLab, HasPublicUuid, LogsActivity;
 
     public function getActivitylogOptions(): LogOptions
     {

@@ -17,7 +17,7 @@
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <div class="flex items-center gap-2">
-                            <a href="{{ route('lab.orders.show', $order) }}" wire:navigate class="app-link-primary text-lg font-semibold">{{ $order->order_number }}</a>
+                            <a href="{{ route('lab.samples.show', $order) }}" wire:navigate class="app-link-primary text-lg font-semibold">{{ $order->order_number }}</a>
                             @if($order->critical_item_count > 0)
                                 <x-status-badge type="signal" status="critical" :label="'Critical ' . $order->critical_item_count" />
                             @endif

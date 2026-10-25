@@ -30,7 +30,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($items as $item)
                         <tr>
-                            <td class="px-6 py-4 align-top"><a href="{{ route('lab.orders.show', $item->order) }}" wire:navigate class="app-link-primary font-medium">{{ $item->order->order_number }}</a></td>
+                            <td class="px-6 py-4 align-top"><a href="{{ route('lab.samples.show', $item->order) }}" wire:navigate class="app-link-primary font-medium">{{ $item->order->order_number }}</a></td>
                             <td class="px-6 py-4 align-top">{{ $item->order->patient->name }}</td>
                             <td class="px-6 py-4 align-top">
                                 <div>{{ $item->test->name }}</div>
