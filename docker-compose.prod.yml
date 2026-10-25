@@ -1,0 +1,47 @@
+# Production stack: app + its own Postgres. Normally started by ./deploy.sh,
+# which creates .env.deploy (secrets) first. Manual use:
+#
+#   docker compose --env-file .env.deploy -f docker-compose.prod.yml up -d --build
+#
+# The app listens on 127.0.0.1:${APP_PORT:-8080} only; put nginx (or any
+# reverse proxy) in front for HTTPS. Data lives in named volumes, so
+# rebuilding or recreating containers never loses it.
+
+name: laboratory
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lims
+      POSTGRES_USER: lims
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?run ./deploy.sh to create .env.deploy}
+    volumes:
+      - lims-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lims -d lims"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: laboratory:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env.deploy
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    volumes:
+      - lims-storage:/app/storage/app
+
+volumes:
+  lims-db-data:
+    name: lims-db-data
+  lims-storage:
+    name: lims-storage

@@ -90,9 +90,41 @@ Anything not listed falls back to `docker/env.defaults`.
 | `docker/Caddyfile` | FrankenPHP config; binds to `$PORT` |
 | `docker/supervisord.conf` | Runs web + `queue:work` + `schedule:work` |
 | `docker/php.ini` | Production PHP + OPcache settings |
+| `deploy.sh` | One-command server deploy (Docker, secrets, build, start, first admin) |
+| `docker-compose.prod.yml` | Production stack: app + Postgres with persistent volumes |
 | `docker-compose.yml` | Local run: the same image + a throwaway Postgres |
 | `.env.docker` | Local compose settings (no real secrets) |
 | `render.yaml` | Render blueprint (service, env vars, health check `/up`) |
+
+## Deploy on your own server (one command)
+
+On a fresh Ubuntu/Debian server (no PHP, Node or database needed):
+
+```bash
+git clone https://github.com/Shakeelnasafian/laboratory-system.git /var/www/html   # or any folder
+cd /var/www/html
+./deploy.sh https://your-domain.com
+```
+
+`deploy.sh` installs Docker if missing (and adds a swap file on small servers), generates the secrets once in `.env.deploy` (app key, database password — git-ignored, keep a backup), builds the image, starts **the app and its own Postgres** from `docker-compose.prod.yml`, runs the migrations, and on a brand-new database creates the Super Admin `admin@labsystem.pk` with a random password that is printed once.
+
+To update later: `./deploy.sh` (pulls the latest code, rebuilds, restarts; data is kept in the `lims-db-data` and `lims-storage` Docker volumes).
+
+The app listens on `127.0.0.1:8080` only. Put nginx in front for HTTPS (e.g. `sudo certbot --nginx -d your-domain.com`, then make the `location /` block):
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 20M;
+}
+```
+
+Useful commands: `docker compose --env-file .env.deploy -f docker-compose.prod.yml logs -f app` · `... ps` · `... down` (keeps data). To use an external database such as Neon instead, edit `.env.deploy` (set `DB_URL`, `DB_SSLMODE=require`, remove the `DB_HOST/DB_DATABASE/DB_USERNAME/DB_PASSWORD` lines) and re-run `./deploy.sh`.
 
 ## Deploy on Render + Neon
 
