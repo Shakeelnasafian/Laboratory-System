@@ -40,6 +40,13 @@ if [ "$mem_mb" -lt 2000 ] && [ -z "$(swapon --show --noheadings)" ]; then
 fi
 
 # 3. Secrets / config (created once, never overwritten) -----------------------
+# Never generate a new DB password when an existing production database is present.
+# The original .env.deploy is needed so the app keeps using that database's credentials.
+if [ ! -f .env.deploy ] && docker container inspect laboratory-db-1 >/dev/null 2>&1; then
+    echo "!! Found existing container laboratory-db-1, but .env.deploy is missing."
+    echo "!! Restore the original .env.deploy from backup before deploying; refusing to generate new credentials."
+    exit 1
+fi
 if [ ! -f "$ENV_FILE" ]; then
     echo "==> Creating $ENV_FILE with generated secrets..."
     umask 077
