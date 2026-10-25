@@ -14,10 +14,7 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /up     # Laravel's built-in health route (bootstrap/app.php)
 
-    # Runs ONCE per deploy, before traffic is shifted. Requires a paid plan.
-    # On the free plan, remove this and instead uncomment the migrate line
-    # in docker/entrypoint.sh.
-    preDeployCommand: "php artisan migrate --force"
+    # Migrations run automatically in docker/entrypoint.sh on container start.
 
     envVars:
       - key: APP_NAME

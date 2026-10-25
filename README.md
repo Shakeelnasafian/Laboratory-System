@@ -2,6 +2,8 @@
 
 A multi-tenant Laboratory Information System for diagnostic labs in Pakistan. It covers patient registration, order intake, sample workflow, worklists, results, billing, report release, and PDF report printing.
 
+**Repository:** [github.com/Shakeelnasafian/laboratory-system](https://github.com/Shakeelnasafian/laboratory-system)
+
 ## Live Demo
 
 **🔗 [laboratory-system-ruiv.onrender.com](https://laboratory-system-ruiv.onrender.com/)**
@@ -12,11 +14,119 @@ Hosted on Render (Docker) with a Neon PostgreSQL database. Sign in with any acco
 
 ## Tech Stack
 
-- Backend: Laravel 12, PHP 8.2+
-- Frontend: Livewire 4, Alpine.js (via Livewire), Tailwind CSS
-- Database: PostgreSQL in production (Neon); SQLite/MySQL supported locally
-- Deployment: Docker (FrankenPHP), Render, Neon Postgres
+- Backend: Laravel 12, PHP 8.3 (FrankenPHP)
+- Frontend: Livewire 4, Alpine.js (via Livewire), Tailwind CSS (built with Vite)
+- Database: PostgreSQL (Neon in production)
+- Packaging: one self-contained Docker image
 - Packages: Spatie Laravel Permission, barryvdh/laravel-dompdf, Laravel Breeze
+
+## Quick Start (Docker)
+
+The whole app ships as **one image**. Composer packages, the Node/Vite asset build, and the PHP extensions (Postgres, GD, intl, …) are all baked in at build time. On start the container sets itself up and runs migrations — you only provide the database.
+
+```bash
+git clone https://github.com/Shakeelnasafian/laboratory-system.git
+cd laboratory-system
+
+# Local try-out: app + throwaway Postgres, with demo data
+RUN_SEEDERS=true docker compose up --build
+# open http://localhost:8080   (health check: /up)
+```
+
+Sign in with the [Default Credentials](#default-credentials). Drop `RUN_SEEDERS=true` for an empty database (only roles/migrations).
+If port 8080 is taken: `APP_PORT=8099 docker compose up --build`.
+
+### Run the image against your own database
+
+```bash
+docker build -t laboratory .
+
+docker run -d --name laboratory -p 8080:8080 \
+  -e APP_URL=https://lab.example.com \
+  -e DB_URL='postgresql://USER:PASSWORD@HOST/DBNAME' \
+  -e APP_KEY='base64:...' \
+  laboratory
+```
+
+### What happens on container start
+
+`docker/entrypoint.sh` runs, in order:
+
+1. **`.env`** is created from the non-secret defaults baked into the image (`docker/env.defaults`: production mode, stderr logging, `database` session/cache/queue drivers, …).
+2. **`APP_KEY`** — if you did not pass one, a new key is generated. Real environment variables you pass with `-e` / compose always override `.env`.
+3. **Migrations** — waits for the database (up to 60 s by default) and runs `php artisan migrate --force`.
+4. **Seeding** (optional) — only if `RUN_SEEDERS=true`.
+5. **Caches** — config, routes, views, events are cached; `storage:link` is created.
+6. **Supervisor** starts the web server (FrankenPHP), the queue worker, and the scheduler.
+
+> **Keep `APP_KEY` stable.** A generated key lives only inside that container. If the container is recreated, sessions and any encrypted data tied to the old key are lost. For anything beyond a trial, generate one once and pass it in:
+> `docker run --rm laboratory php artisan key:generate --show`
+
+### Configuration
+
+Provide these at run time (env vars, compose `environment`, or your platform's dashboard):
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `DB_URL` | yes* | Full connection string, e.g. Neon **pooled** URL (host contains `-pooler`). *Or use `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` |
+| `APP_URL` | recommended | Public URL of the app |
+| `APP_KEY` | recommended | Auto-generated if missing (see warning above) |
+| `DB_SSLMODE` | no | Defaults to `require` (Neon). Use `disable` for a plain local Postgres |
+| `RUN_MIGRATIONS` | no | `true` (default). Set `false` to skip migrations on start |
+| `RUN_SEEDERS` | no | `false` (default). `true` seeds the demo dataset |
+| `DB_WAIT_RETRIES` | no | Attempts, 2 s apart, to reach the DB before failing (default `30`) |
+| `PORT` | no | Port the web server listens on (default `8080`) |
+| `MAIL_*`, `AWS_*`, … | no | Any other Laravel env var works the same way |
+
+Anything not listed falls back to `docker/env.defaults`.
+
+### Image layout
+
+| File | Purpose |
+| --- | --- |
+| `Dockerfile` | Multi-stage build: Vite assets → Composer (no-dev) → FrankenPHP runtime |
+| `docker/entrypoint.sh` | Start-up bootstrap: `.env`, app key, migrations, caches |
+| `docker/env.defaults` | Non-secret defaults copied to `.env` on first start |
+| `docker/Caddyfile` | FrankenPHP config; binds to `$PORT` |
+| `docker/supervisord.conf` | Runs web + `queue:work` + `schedule:work` |
+| `docker/php.ini` | Production PHP + OPcache settings |
+| `docker-compose.yml` | Local run: the same image + a throwaway Postgres |
+| `.env.docker` | Local compose settings (no real secrets) |
+| `render.yaml` | Render blueprint (service, env vars, health check `/up`) |
+
+## Deploy on Render + Neon
+
+The live demo runs this same image on [Render](https://render.com) with a [Neon](https://neon.tech) database. Create a Web Service from the repo (Docker runtime; `render.yaml` is picked up as a Blueprint) and set:
+
+| Key | Value |
+| --- | --- |
+| `APP_KEY` | output of `php artisan key:generate --show` |
+| `APP_URL` | `https://<your-service>.onrender.com` |
+| `DB_URL` | Neon pooled connection string |
+
+Migrations run automatically on every deploy via the entrypoint — no pre-deploy hook is needed, so this also works on the free plan.
+
+Each migration sets `public $withinTransaction = false;` so statements auto-commit individually instead of being wrapped in one transaction. This avoids the `SQLSTATE[25P02]` failure that occurs when multi-statement DDL transactions run through Neon's pooled (PgBouncer) endpoint.
+
+## Local Development (without Docker)
+
+Requirements: PHP 8.2+, Composer, Node.js + npm, and a database (SQLite, MySQL, or Postgres).
+
+```bash
+git clone https://github.com/Shakeelnasafian/laboratory-system.git
+cd laboratory-system
+
+composer install
+npm install
+
+cp .env.example .env
+php artisan key:generate
+# edit DB_* in .env, then:
+php artisan migrate --seed
+
+npm run dev          # terminal 1 (or `npm run build` once)
+php artisan serve    # terminal 2
+```
 
 ## Features
 
@@ -53,135 +163,21 @@ Hosted on Render (Docker) with a Neon PostgreSQL database. Sign in with any acco
 | `receptionist` | Patients, orders, samples, billing |
 | `technician` | Sample receive, worklists, results |
 
-## Setup
-
-### Requirements
-
-- PHP 8.2+
-- MySQL
-- Node.js and npm
-- Composer
-
-### Installation
-
-```bash
-git clone <repo-url>
-cd Laboratory
-
-composer install
-npm install
-
-cp .env.example .env
-php artisan key:generate
-```
-
-Configure your `.env`:
-
-```env
-DB_DATABASE=lab_system
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
-Run migrations and seed the full demo dataset:
-
-```bash
-php artisan migrate --seed
-```
-
-Build assets:
-
-```bash
-npm run build
-```
-
-Start the server:
-
-```bash
-php artisan serve
-```
-
-### Development
-
-```bash
-npm run dev
-# In a separate terminal:
-php artisan serve
-```
-
-## Deployment (Render + Neon + Docker)
-
-The app is deployed to [Render](https://render.com) as a Docker service backed by a [Neon](https://neon.tech) PostgreSQL database. Live: [laboratory-system-ruiv.onrender.com](https://laboratory-system-ruiv.onrender.com/).
-
-### Architecture
-
-- **Runtime:** FrankenPHP (classic mode — full Livewire compatibility), single image.
-- **Topology:** all-in-one container — web + queue worker + scheduler managed by Supervisor.
-- **Database:** Neon Postgres. Session, cache, and queue all use the `database` driver (no Redis).
-
-### Relevant files
-
-| File | Purpose |
-| --- | --- |
-| `Dockerfile` | Multi-stage build: Vite assets → Composer (no-dev) → FrankenPHP runtime |
-| `docker/Caddyfile` | FrankenPHP config; binds to Render's `$PORT` |
-| `docker/supervisord.conf` | Runs web + `queue:work` + `schedule:work` |
-| `docker/entrypoint.sh` | Runtime cache warmup + storage link |
-| `render.yaml` | Render blueprint (service, env vars, health check `/up`) |
-| `docker-compose.yml` | Local-only: runs the same image against a throwaway Postgres |
-
-### Required environment variables (set in Render dashboard)
-
-| Key | Notes |
-| --- | --- |
-| `APP_KEY` | `php artisan key:generate --show` |
-| `APP_URL` | `https://laboratory-system-ruiv.onrender.com` |
-| `DB_CONNECTION` | `pgsql` |
-| `DB_URL` | Neon **pooled** connection string (host contains `-pooler`) |
-| `DB_SSLMODE` | `require` (Neon mandates TLS) |
-
-### Neon migration note
-
-Migrations are run manually against the Neon database:
-
-```bash
-php artisan migrate:fresh --force --seed
-```
-
-Each migration sets `public $withinTransaction = false;` so statements auto-commit
-individually instead of being wrapped in one transaction — this avoids the
-`SQLSTATE[25P02]` failure that occurs when multi-statement DDL transactions run
-through Neon's pooled (PgBouncer) endpoint.
-
-### Run the production image locally
-
-```bash
-docker compose up --build
-# then open http://localhost:8080  (health: /up)
-```
-
-This uses a local Postgres container (config in `.env.docker`) — it does **not**
-touch Neon or production.
-
 ## Seeders
 
-`DatabaseSeeder` now runs:
+`DatabaseSeeder` runs:
 
 - `RolesAndPermissionsSeeder`
 - `DemoLabsSeeder`
 - `DemoLabShowcaseSeeder`
 
+In Docker, enable with `RUN_SEEDERS=true`; locally use `php artisan migrate --seed`.
+
 ### What gets seeded
 
 - 1 super admin account
-- 2 demo labs:
-  - City Diagnostic Lab
-  - Prime Care Laboratory
-- 4 staff accounts per demo lab:
-  - `lab_admin`
-  - `lab_incharge`
-  - `receptionist`
-  - `technician`
+- 2 demo labs: City Diagnostic Lab, Prime Care Laboratory
+- 4 staff accounts per demo lab: `lab_admin`, `lab_incharge`, `receptionist`, `technician`
 - Per demo lab showcase data:
   - 10 patients
   - 6 test categories
@@ -213,16 +209,7 @@ The demo seeders are idempotent. Running them again updates the same demo record
 | Prime Care Laboratory | Receptionist | `reception.prime@labsystem.demo` | `password123` |
 | Prime Care Laboratory | Technician | `tech.prime@labsystem.demo` | `password123` |
 
-## Demo Showcase Notes
-
-After seeding, each demo lab dashboard includes working queue examples for:
-
-- pending collection
-- rejected sample and recollection
-- collected and received samples
-- worklist-ready and in-processing items
-- draft, verified, and released results
-- paid, partial, and unpaid invoices
+> Change these passwords before exposing any real deployment.
 
 ## URL Structure
 
@@ -260,14 +247,9 @@ This project uses login-based multi-tenancy. Most lab-owned models carry a `lab_
 
 ## Tests
 
-Seeder coverage is included in:
-
-- `tests/Feature/DemoSeedersTest.php`
-
-Run the seeder tests with:
-
 ```bash
-php artisan test tests/Feature/DemoSeedersTest.php
+php artisan test
+php artisan test tests/Feature/DemoSeedersTest.php   # seeder coverage only
 ```
 
 ## Project Structure
@@ -282,16 +264,15 @@ app/
   Traits/BelongsToLab.php                 Multi-tenancy scope trait
 database/
   migrations/                             Table migrations
-  seeders/DatabaseSeeder.php              Main seeder entrypoint
-  seeders/DemoLabsSeeder.php              Demo labs and staff
-  seeders/DemoLabShowcaseSeeder.php       Demo patients, tests, orders, invoices, results
+  seeders/                                Roles, demo labs, showcase data
+docker/                                   Entrypoint, env defaults, Caddy, Supervisor, php.ini
 resources/
   views/layouts/                          Admin and lab shells
   views/livewire/                         Livewire views
   views/reports/order.blade.php           PDF report template
 routes/web.php                            Application routes
-tests/
-  Feature/DemoSeedersTest.php             Seeder coverage
+Dockerfile                                Single production image
+docker-compose.yml                        Local app + Postgres
 ```
 
 ## License

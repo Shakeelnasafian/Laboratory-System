@@ -1,11 +1,13 @@
-# LOCAL DEVELOPMENT ONLY — not used by Render.
-# Render deploys via render.yaml (Neon Postgres). This compose file runs the
-# exact same production image against a throwaway local Postgres so you can
-# validate the container locally with one command:
+# Local run of the production image against a throwaway Postgres.
 #
 #     docker compose up --build
 #
 # Then open http://localhost:8080  (health: http://localhost:8080/up)
+#
+# The app container installs nothing at start: deps and assets are baked into
+# the image. On start it creates .env from image defaults, generates APP_KEY if
+# you did not supply one, waits for the DB and runs migrations.
+# Add demo data once with:  RUN_SEEDERS=true docker compose up
 
 services:
   db:
@@ -15,7 +17,7 @@ services:
       POSTGRES_USER: laboratory
       POSTGRES_PASSWORD: secret
     ports:
-      - "5432:5432"          # exposed so you can inspect with a local client
+      - "5432:5432"
     volumes:
       - lab-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -24,27 +26,19 @@ services:
       timeout: 3s
       retries: 10
 
-  # One-shot: runs migrations + seeders, then exits. The app waits for it.
-  migrate:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    image: laboratory:render
-    command: php artisan migrate --force --seed
-    env_file: .env.docker
+    image: laboratory:latest
     depends_on:
       db:
         condition: service_healthy
-    restart: "no"
-
-  app:
-    image: laboratory:render          # reuse the image built by `migrate`
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
     env_file: .env.docker
+    environment:
+      RUN_SEEDERS: ${RUN_SEEDERS:-false}
     ports:
-      - "8080:8080"                   # host 8080 -> FrankenPHP in container
+      - "${APP_PORT:-8080}:8080"
     restart: unless-stopped
 
 volumes:
