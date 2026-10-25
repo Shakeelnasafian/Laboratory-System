@@ -31,32 +31,119 @@ class OrderCreate extends Component
 
     public function updatedPatientSearch(): void
     {
-        if (strlen($this->patient_search) >= 2) {
-            $this->patientResults = Patient::where(function ($query) {
-                $query->where('name', 'like', "%{$this->patient_search}%")
-                    ->orWhere('cnic', 'like', "%{$this->patient_search}%")
-                    ->orWhere('phone', 'like', "%{$this->patient_search}%");
-            })
-                ->take(6)
-                ->get()
-                ->toArray();
-        } else {
+        $search = trim($this->patient_search);
+
+        if (mb_strlen($search) < 2) {
             $this->patientResults = [];
+            return;
         }
+
+        $tokens = preg_split('/\s+/u', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $pattern = '%' . $search . '%';
+
+        $query = Patient::query()->where(function ($query) use ($tokens, $pattern) {
+            // Case-insensitive partial matches; each word can match independently.
+            $query->whereRaw('name ILIKE ?', [$pattern])
+                ->orWhereRaw('cnic ILIKE ?', [$pattern])
+                ->orWhereRaw('phone ILIKE ?', [$pattern])
+                ->orWhereRaw('patient_id ILIKE ?', [$pattern]);
+
+            foreach ($tokens as $token) {
+                $tokenPattern = '%' . $token . '%';
+                $query->orWhereRaw('name ILIKE ?', [$tokenPattern]);
+            }
+        });
+
+        $matches = $query
+            ->orderByRaw('CASE WHEN LOWER(name) = LOWER(?) THEN 0 WHEN LOWER(name) LIKE LOWER(?) THEN 1 ELSE 2 END', [$search, $search . '%'])
+            ->limit(20)
+            ->get();
+
+        // If there are no substring matches, offer typo-tolerant suggestions among
+        // names beginning with the same character rather than scanning every patient.
+        if ($matches->isEmpty() && mb_strlen($search) >= 3) {
+            $firstCharacter = mb_substr($search, 0, 1);
+            $candidates = Patient::query()
+                ->whereRaw('name ILIKE ?', [$firstCharacter . '%'])
+                ->orderBy('name')
+                ->limit(100)
+                ->get();
+
+            $maxDistance = mb_strlen($search) >= 6 ? 2 : 1;
+            $matches = $candidates->map(function (Patient $patient) use ($search) {
+                $name = mb_strtolower($patient->name);
+                $distance = levenshtein(mb_strtolower($search), $name);
+                foreach (preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+                    $distance = min($distance, levenshtein(mb_strtolower($search), $word));
+                }
+
+                $patient->setAttribute('_search_distance', $distance);
+                return $patient;
+            })->filter(fn (Patient $patient) => $patient->getAttribute('_search_distance') <= $maxDistance)
+                ->sortBy('_search_distance')
+                ->take(6)
+                ->values();
+        }
+
+        $this->patientResults = $matches->take(6)->toArray();
     }
 
     public function updatedTestSearch(): void
     {
-        if (strlen($this->test_search) >= 2) {
-            $this->testResults = Test::where('is_active', true)
-                ->where(fn ($query) => $query->where('name', 'like', "%{$this->test_search}%")
-                    ->orWhere('code', 'like', "%{$this->test_search}%"))
-                ->take(8)
-                ->get()
-                ->toArray();
-        } else {
+        $search = trim($this->test_search);
+
+        if (mb_strlen($search) < 2) {
             $this->testResults = [];
+            return;
         }
+
+        $pattern = '%' . $search . '%';
+        $tokens = preg_split('/\s+/u', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $matches = Test::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($pattern, $tokens) {
+                $query->whereRaw('name ILIKE ?', [$pattern])
+                    ->orWhereRaw('code ILIKE ?', [$pattern]);
+
+                foreach ($tokens as $token) {
+                    $tokenPattern = '%' . $token . '%';
+                    $query->orWhereRaw('name ILIKE ?', [$tokenPattern])
+                        ->orWhereRaw('code ILIKE ?', [$tokenPattern]);
+                }
+            })
+            ->orderByRaw('CASE WHEN LOWER(name) = LOWER(?) OR LOWER(code) = LOWER(?) THEN 0 WHEN LOWER(name) LIKE LOWER(?) OR LOWER(code) LIKE LOWER(?) THEN 1 ELSE 2 END', [$search, $search, $search . '%', $search . '%'])
+            ->limit(20)
+            ->get();
+
+        // Test catalogs are normally small; use edit distance as a fallback for
+        // common typing mistakes when no partial match is found.
+        if ($matches->isEmpty() && mb_strlen($search) >= 3) {
+            $maxDistance = mb_strlen($search) >= 6 ? 2 : 1;
+            $matches = Test::query()
+                ->where('is_active', true)
+                ->get()
+                ->map(function (Test $test) use ($search) {
+                    $needle = mb_strtolower($search);
+                    $distance = min(
+                        levenshtein($needle, mb_strtolower($test->name)),
+                        levenshtein($needle, mb_strtolower($test->code ?? ''))
+                    );
+
+                    foreach (preg_split('/\s+/u', mb_strtolower($test->name), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+                        $distance = min($distance, levenshtein($needle, $word));
+                    }
+
+                    $test->setAttribute('_search_distance', $distance);
+                    return $test;
+                })
+                ->filter(fn (Test $test) => $test->getAttribute('_search_distance') <= $maxDistance)
+                ->sortBy('_search_distance')
+                ->take(8)
+                ->values();
+        }
+
+        $this->testResults = $matches->take(8)->toArray();
     }
 
     public function selectPatient(int $id): void
@@ -72,6 +159,7 @@ class OrderCreate extends Component
         $this->selectedPatient = $patient;
         $this->patient_id = $patient->id;
         $this->patient_search = $patient->name;
+        $this->referred_by = $patient->referred_by ?? $this->referred_by;
         $this->patientResults = [];
     }
 
