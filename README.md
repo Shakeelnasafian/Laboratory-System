@@ -106,9 +106,11 @@ cd /var/www/html
 ./deploy.sh https://your-domain.com
 ```
 
-`deploy.sh` installs Docker if missing (and adds a swap file on small servers), generates the secrets once in `.env.deploy` (app key, database password — git-ignored, keep a backup), builds the image, starts **the app and its own Postgres** from `docker-compose.prod.yml`, runs the migrations, and on a brand-new database creates the Super Admin `admin@labsystem.pk` with a random password that is printed once.
+`deploy.sh` installs Docker if missing (and adds a swap file on small servers), generates the secrets once in `.env.deploy` (app key, database password — git-ignored, keep a backup), and uses the fixed Compose project name `laboratory`. It ensures the PostgreSQL service exists, **without recreating an existing database container**, then rebuilds and updates only the app. On a brand-new database it runs migrations and creates the Super Admin `admin@labsystem.pk` with a random password that is printed once.
 
-To update later: `./deploy.sh` (pulls the latest code, rebuilds, restarts; data is kept in the `lims-db-data` and `lims-storage` Docker volumes).
+To update later: `./deploy.sh`. The script reuses the existing `laboratory-db-1` container when it belongs to this Compose project; it creates the database service only when it is absent. App updates use `--no-deps`, so they do not recreate the database. Data remains in the `lims-db-data` and `lims-storage` Docker volumes.
+
+**Important for production:** Do not run bare `docker compose up --build` in `/var/www/html`. The default `docker-compose.yml` is for local development and starts a separate throwaway PostgreSQL service, which can create a second database container. Use `./deploy.sh` for production deployments.
 
 The app listens on `127.0.0.1:8080` only. Put nginx in front for HTTPS (e.g. `sudo certbot --nginx -d your-domain.com`, then make the `location /` block):
 
