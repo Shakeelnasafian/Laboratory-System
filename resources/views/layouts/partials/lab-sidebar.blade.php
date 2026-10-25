@@ -92,10 +92,6 @@
             </div>
         </div>
 
-        <x-lab-nav-link :href="route('lab.changelog')" :active="request()->routeIs('lab.changelog')">
-            <x-slot name="icon"><x-sidebar-icon name="changelog" /></x-slot> Change Log
-        </x-lab-nav-link>
-
         @role('lab_admin')
             <p
                 class="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-blue-400"
@@ -117,7 +113,32 @@
                 <x-slot name="icon"><x-sidebar-icon name="settings" /></x-slot> Settings
             </x-lab-nav-link>
         @endrole
+
+        <div class="mt-4 border-t border-blue-800 pt-3">
+            <x-lab-nav-link :href="route('lab.changelog')" :active="request()->routeIs('lab.changelog')">
+                <x-slot name="icon"><x-sidebar-icon name="changelog" /></x-slot> Change Log
+            </x-lab-nav-link>
+        </div>
     </nav>
+
+    {{-- Collapse / expand the sidebar (desktop only; mobile uses the drawer). --}}
+    <div class="hidden shrink-0 border-t border-blue-800 px-3 py-2 lg:block">
+        <button
+            type="button"
+            @click="$store.labSidebar.toggleMini()"
+            class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-blue-200 transition hover:bg-blue-800 hover:text-white"
+            :class="$store.labSidebar.mini ? 'justify-center' : ''"
+            :title="$store.labSidebar.mini ? 'Expand sidebar' : 'Collapse sidebar'"
+        >
+            <svg x-show="!$store.labSidebar.mini" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+            <svg x-show="$store.labSidebar.mini" x-cloak xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+            <span x-show="!$store.labSidebar.mini">Collapse sidebar</span>
+        </button>
+    </div>
 
     <div class="shrink-0 border-t border-blue-800 px-4 py-3">
         <div class="flex items-center gap-3" :class="$store.labSidebar.mini && $store.labSidebar.isDesktop ? 'justify-center' : 'justify-between'">
