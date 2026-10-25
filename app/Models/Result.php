@@ -105,4 +105,43 @@ class Result extends Model
     {
         return $this->is_abnormal;
     }
+
+    /**
+     * Suggest a flag by comparing a numeric value with a range such as
+     * "12-16", "< 200" or "> 40". Returns null when either side is not
+     * numeric (e.g. "Negative"), so the caller keeps the current flag.
+     */
+    public static function suggestFlag(?string $value, ?string $normalRange): ?string
+    {
+        $value = trim((string) $value);
+        $range = trim((string) $normalRange);
+
+        if ($value === '' || $range === '' || ! is_numeric($value)) {
+            return null;
+        }
+
+        $number = (float) $value;
+        $low = null;
+        $high = null;
+
+        if (preg_match('/^(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)/i', $range, $matches)) {
+            [$low, $high] = [(float) $matches[1], (float) $matches[2]];
+        } elseif (preg_match('/^(?:<|≤|up\s*to)\s*=?\s*(\d+(?:\.\d+)?)/i', $range, $matches)) {
+            $high = (float) $matches[1];
+        } elseif (preg_match('/^(?:>|≥)\s*=?\s*(\d+(?:\.\d+)?)/i', $range, $matches)) {
+            $low = (float) $matches[1];
+        } else {
+            return null;
+        }
+
+        if ($low !== null && $number < $low) {
+            return self::FLAG_LOW;
+        }
+
+        if ($high !== null && $number > $high) {
+            return self::FLAG_HIGH;
+        }
+
+        return self::FLAG_NORMAL;
+    }
 }

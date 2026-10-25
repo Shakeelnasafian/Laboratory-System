@@ -43,45 +43,55 @@
             <x-slot name="icon"><x-sidebar-icon name="dashboard" /></x-slot> Dashboard
         </x-lab-nav-link>
 
-        <p
-            class="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-blue-400"
-            x-show="!$store.labSidebar.mini || !$store.labSidebar.isDesktop"
-            x-transition.opacity.duration.150ms
-        >
-            Patients
-        </p>
-        <x-lab-nav-link :href="route('lab.patients.index')" :active="request()->routeIs('lab.patients*')">
-            <x-slot name="icon"><x-sidebar-icon name="patients" /></x-slot> Patients
-        </x-lab-nav-link>
+        {{-- Front desk registers orders and takes money; the lab works samples. --}}
         <x-lab-nav-link :href="route('lab.orders.create')" :active="request()->routeIs('lab.orders.create')">
             <x-slot name="icon"><x-sidebar-icon name="new-order" /></x-slot> New Order
         </x-lab-nav-link>
         <x-lab-nav-link :href="route('lab.orders.index')" :active="request()->routeIs('lab.orders.index') || request()->routeIs('lab.orders.show')">
             <x-slot name="icon"><x-sidebar-icon name="orders" /></x-slot> Orders
         </x-lab-nav-link>
-
-        <p
-            class="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-blue-400"
-            x-show="!$store.labSidebar.mini || !$store.labSidebar.isDesktop"
-            x-transition.opacity.duration.150ms
-        >
-            Lab Work
-        </p>
-        <x-lab-nav-link :href="route('lab.samples.collection')" :active="request()->routeIs('lab.samples.*')">
+        <x-lab-nav-link :href="route('lab.samples.index')" :active="request()->routeIs('lab.samples.index', 'lab.samples.show')">
             <x-slot name="icon"><x-sidebar-icon name="samples" /></x-slot> Samples
         </x-lab-nav-link>
-        <x-lab-nav-link :href="route('lab.worklists.index')" :active="request()->routeIs('lab.worklists.*')">
-            <x-slot name="icon"><x-sidebar-icon name="worklists" /></x-slot> Worklists
-        </x-lab-nav-link>
-        <x-lab-nav-link :href="route('lab.results.index')" :active="request()->routeIs('lab.results.index')">
-            <x-slot name="icon"><x-sidebar-icon name="results" /></x-slot> Results
-        </x-lab-nav-link>
-        <x-lab-nav-link :href="route('lab.results.release')" :active="request()->routeIs('lab.results.release')">
-            <x-slot name="icon"><x-sidebar-icon name="release" /></x-slot> Result Release
+        <x-lab-nav-link :href="route('lab.patients.index')" :active="request()->routeIs('lab.patients*')">
+            <x-slot name="icon"><x-sidebar-icon name="patients" /></x-slot> Patients
         </x-lab-nav-link>
         <x-lab-nav-link :href="route('lab.invoices.index')" :active="request()->routeIs('lab.invoices*')">
             <x-slot name="icon"><x-sidebar-icon name="billing" /></x-slot> Billing
         </x-lab-nav-link>
+
+        {{-- Per-step screens for larger labs with separate staff per bench. --}}
+        @php
+            $advancedActive = request()->routeIs('lab.samples.collection', 'lab.samples.receive', 'lab.samples.rejected', 'lab.worklists.*', 'lab.results.*');
+        @endphp
+        <div x-data="{ open: {{ $advancedActive ? 'true' : 'false' }} }">
+            <button
+                type="button"
+                @click="open = !open"
+                class="flex w-full items-center justify-between px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-blue-400 hover:text-blue-200"
+                x-show="!$store.labSidebar.mini || !$store.labSidebar.isDesktop"
+            >
+                Advanced workflow
+                <svg class="h-3.5 w-3.5 transition" :class="open && 'rotate-180'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div class="space-y-1" x-show="open || ($store.labSidebar.mini && $store.labSidebar.isDesktop)" x-cloak>
+                <x-lab-nav-link :href="route('lab.samples.collection')" :active="request()->routeIs('lab.samples.collection', 'lab.samples.receive', 'lab.samples.rejected')">
+                    <x-slot name="icon"><x-sidebar-icon name="samples" /></x-slot> Sample collection
+                </x-lab-nav-link>
+                <x-lab-nav-link :href="route('lab.worklists.index')" :active="request()->routeIs('lab.worklists.*')">
+                    <x-slot name="icon"><x-sidebar-icon name="worklists" /></x-slot> Worklists
+                </x-lab-nav-link>
+                <x-lab-nav-link :href="route('lab.results.index')" :active="request()->routeIs('lab.results.index')">
+                    <x-slot name="icon"><x-sidebar-icon name="results" /></x-slot> Results
+                </x-lab-nav-link>
+                <x-lab-nav-link :href="route('lab.results.release')" :active="request()->routeIs('lab.results.release')">
+                    <x-slot name="icon"><x-sidebar-icon name="release" /></x-slot> Result Release
+                </x-lab-nav-link>
+            </div>
+        </div>
+
         <x-lab-nav-link :href="route('lab.changelog')" :active="request()->routeIs('lab.changelog')">
             <x-slot name="icon"><x-sidebar-icon name="changelog" /></x-slot> Change Log
         </x-lab-nav-link>

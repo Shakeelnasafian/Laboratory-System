@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToLab;
+use App\Traits\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Order extends Model
 {
-    use BelongsToLab, LogsActivity;
+    use BelongsToLab, HasPublicUuid, LogsActivity;
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -97,6 +98,53 @@ class Order extends Model
     public function canPrintReport(): bool
     {
         return $this->allResultsReleased();
+    }
+
+    public const STEP_COLLECT = 'collect';
+    public const STEP_RESULTS = 'results';
+    public const STEP_VERIFY = 'verify';
+    public const STEP_RELEASE = 'release';
+    public const STEP_DONE = 'done';
+    public const STEP_CANCELLED = 'cancelled';
+
+    public const STEP_LABELS = [
+        self::STEP_COLLECT => 'Collect sample',
+        self::STEP_RESULTS => 'Enter results',
+        self::STEP_VERIFY => 'Verify results',
+        self::STEP_RELEASE => 'Release report',
+        self::STEP_DONE => 'Report ready',
+        self::STEP_CANCELLED => 'Cancelled',
+    ];
+
+    /**
+     * The single next thing to do with this order. Must stay in step with
+     * SampleIndex::applyQueue(), which expresses the same rules in SQL.
+     */
+    public function workflowStep(): string
+    {
+        if ($this->status === self::STATUS_CANCELLED) {
+            return self::STEP_CANCELLED;
+        }
+
+        $this->loadMissing('items.sample', 'items.result');
+
+        if ($this->allResultsReleased()) {
+            return self::STEP_DONE;
+        }
+
+        if ($this->items->contains(fn (OrderItem $item) => ! $item->sample?->isCollected())) {
+            return self::STEP_COLLECT;
+        }
+
+        if ($this->items->contains(fn (OrderItem $item) => ! $item->result)) {
+            return self::STEP_RESULTS;
+        }
+
+        if ($this->items->contains(fn (OrderItem $item) => $item->result->isDraft())) {
+            return self::STEP_VERIFY;
+        }
+
+        return self::STEP_RELEASE;
     }
 
     public function criticalResultsCount(): int

@@ -50,6 +50,33 @@ class LabWorkflowService
         });
     }
 
+    /**
+     * Collect every sample on the order that is not yet collected (walk-in
+     * labs take all samples at the counter). Returns how many were collected.
+     */
+    public function collectOrderSamples(Order $order, User $actor): int
+    {
+        $order->loadMissing('items.sample', 'items.test');
+
+        $collected = 0;
+
+        foreach ($order->items as $item) {
+            if ($item->sample?->isCollected()) {
+                continue;
+            }
+
+            $item->setRelation('order', $order);
+            $item->setRelation('sample', $this->collectSample($item, $actor, ['sample_type' => null, 'container' => null]));
+            $collected++;
+        }
+
+        // collectSample() syncs before the item holds its new sample; re-sync
+        // now that every item's relation is current.
+        $this->syncOrderStatus($order);
+
+        return $collected;
+    }
+
     public function receiveSample(Sample $sample, User $actor): void
     {
         DB::transaction(function () use ($sample, $actor) {
@@ -204,6 +231,28 @@ class LabWorkflowService
         ])->save();
 
         $this->syncOrderStatus($item->order);
+    }
+
+    /**
+     * Verify every draft result on the order. Returns how many were verified.
+     */
+    public function verifyOrderResults(Order $order, User $actor): int
+    {
+        $order->loadMissing('items.result');
+
+        $verified = 0;
+
+        foreach ($order->items as $item) {
+            if (! $item->result?->isDraft()) {
+                continue;
+            }
+
+            $item->setRelation('order', $order);
+            $this->verifyResult($item, $actor);
+            $verified++;
+        }
+
+        return $verified;
     }
 
     public function releaseOrder(Order $order, User $actor): void

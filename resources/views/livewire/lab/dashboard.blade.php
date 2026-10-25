@@ -22,9 +22,9 @@
 
     <div class="mb-6 flex flex-wrap gap-3">
         <a href="{{ route('lab.orders.create') }}" wire:navigate class="app-btn-primary rounded-2xl px-5 py-2.5 text-sm font-medium shadow-sm transition hover:-translate-y-0.5">New Order</a>
-        <a href="{{ route('lab.samples.collection') }}" wire:navigate class="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">Samples</a>
-        <a href="{{ route('lab.worklists.index') }}" wire:navigate class="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">Worklists</a>
-        <a href="{{ route('lab.results.release') }}" wire:navigate class="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">Release Queue</a>
+        <a href="{{ route('lab.samples.index', ['queue' => 'collect']) }}" wire:navigate class="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">Collect samples</a>
+        <a href="{{ route('lab.samples.index', ['queue' => 'results']) }}" wire:navigate class="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">Enter results</a>
+        <a href="{{ route('lab.samples.index', ['queue' => 'release']) }}" wire:navigate class="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">Release reports</a>
     </div>
 
     <div class="app-surface-card overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white">

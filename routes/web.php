@@ -20,6 +20,8 @@ use App\Livewire\Lab\Results\ResultIndex;
 use App\Livewire\Lab\Samples\CollectionIndex as SampleCollectionIndex;
 use App\Livewire\Lab\Samples\ReceiveIndex as SampleReceiveIndex;
 use App\Livewire\Lab\Samples\RejectedIndex as SampleRejectedIndex;
+use App\Livewire\Lab\Samples\SampleIndex;
+use App\Livewire\Lab\Samples\SampleShow;
 use App\Livewire\Lab\Settings\LabSettings;
 use App\Livewire\Lab\Tests\TestCategoryIndex;
 use App\Livewire\Lab\Tests\TestIndex;
@@ -62,9 +64,11 @@ Route::prefix('lab')->name('lab.')->middleware(['auth', 'role:lab_admin|lab_inch
     Route::get('/orders/{order}', OrderShow::class)->name('orders.show');
     Route::get('/orders/{order}/report', [ReportController::class, 'orderReport'])->name('orders.report');
 
-    Route::get('/samples', SampleCollectionIndex::class)->name('samples.collection');
+    Route::get('/samples', SampleIndex::class)->name('samples.index');
+    Route::get('/samples/collection', SampleCollectionIndex::class)->name('samples.collection');
     Route::get('/samples/receive', SampleReceiveIndex::class)->name('samples.receive');
     Route::get('/samples/rejected', SampleRejectedIndex::class)->name('samples.rejected');
+    Route::get('/samples/{order}', SampleShow::class)->whereUuid('order')->name('samples.show');
 
     Route::get('/worklists', WorklistIndex::class)->name('worklists.index');
 

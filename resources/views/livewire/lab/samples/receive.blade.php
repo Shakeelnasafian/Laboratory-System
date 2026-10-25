@@ -24,7 +24,7 @@
                         <tr>
                             <td class="px-6 py-4 align-top whitespace-nowrap font-mono text-blue-700">{{ $sample->accession_number }}</td>
                             <td class="px-6 py-4 align-top">
-                                <a href="{{ route('lab.orders.show', $sample->orderItem->order) }}" wire:navigate class="app-link-primary">{{ $sample->orderItem->order->order_number }}</a>
+                                <a href="{{ route('lab.samples.show', $sample->orderItem->order) }}" wire:navigate class="app-link-primary">{{ $sample->orderItem->order->order_number }}</a>
                             </td>
                             <td class="px-6 py-4 align-top">{{ $sample->orderItem->order->patient->name }}</td>
                             <td class="px-6 py-4 align-top text-gray-600">

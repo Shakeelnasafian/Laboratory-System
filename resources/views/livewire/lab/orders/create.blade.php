@@ -131,7 +131,13 @@
     </div>
 
     {{-- Submit --}}
-    <div class="flex justify-end gap-3">
+    <div class="flex flex-wrap items-center justify-end gap-3">
+        @if(auth()->user()->canCollectSamples())
+            <label class="mr-auto flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input wire:model="collect_now" type="checkbox" class="rounded">
+                Sample collected now <span class="text-xs text-gray-500">(go straight to results)</span>
+            </label>
+        @endif
         <a href="{{ route('lab.orders.index') }}" wire:navigate class="border px-6 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</a>
         <button wire:click="placeOrder"
                 @if(!$patient_id || count($selectedTests) === 0) disabled @endif

@@ -55,5 +55,20 @@ return [
                 'Added this in-app changelog page and linked it from both sidebars.',
             ],
         ],
+        [
+            'type' => 'commit',
+            'reference' => 'single-screen',
+            'date' => 'October 25, 2026',
+            'title' => 'Orders for the front desk, Samples for the lab',
+            'summary' => 'Orders now handle registration and money only; all lab work for an order happens on one sample page, so a single person can collect, enter results and print without switching screens.',
+            'items' => [
+                'New orders default to "Sample collected now" and open straight on the sample page.',
+                'Samples is the lab work queue, with tabs per next step (collect, enter results, verify, release, completed) and a next-step button per sample.',
+                'The sample page shows patient details, a progress bar, a "Collect sample" button and a results grid for every test, with High/Low flags suggested from the normal range.',
+                '"Finalize report" saves, verifies and releases all results in one step; released reports can be amended and finalized again.',
+                'The order page shows tests, prices, payment and cancellation, with "Receive balance" and a link to the sample.',
+                'Dashboard moved to the top of the sidebar; the per-step collection, worklist, result and release screens moved under "Advanced workflow".',
+            ],
+        ],
     ],
 ];

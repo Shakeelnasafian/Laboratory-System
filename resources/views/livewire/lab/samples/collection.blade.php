@@ -29,7 +29,7 @@
                     @forelse($items as $item)
                         <tr>
                             <td class="px-6 py-4 align-top">
-                                <a href="{{ route('lab.orders.show', $item->order) }}" wire:navigate class="app-link-primary font-medium">{{ $item->order->order_number }}</a>
+                                <a href="{{ route('lab.samples.show', $item->order) }}" wire:navigate class="app-link-primary font-medium">{{ $item->order->order_number }}</a>
                                 @if($item->order->is_urgent)
                                     <span class="ml-2 text-xs font-semibold text-red-600">URGENT</span>
                                 @endif
