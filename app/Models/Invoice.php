@@ -6,6 +6,7 @@ use App\Traits\BelongsToLab;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class Invoice extends Model
 {
@@ -47,14 +48,22 @@ class Invoice extends Model
         static::creating(function ($invoice) {
             if (empty($invoice->invoice_number)) {
                 $date = now()->format('Ymd');
+
                 $count = DB::transaction(function () use ($invoice) {
+                    // Lock a real row to serialize invoice numbering for this lab.
+                    // PostgreSQL does not support FOR UPDATE on aggregate COUNT queries.
+                    DB::table('labs')
+                        ->where('id', $invoice->lab_id)
+                        ->lockForUpdate()
+                        ->first();
+
                     return static::withoutGlobalScope('lab')
                         ->where('lab_id', $invoice->lab_id)
                         ->whereDate('created_at', today())
-                        ->lockForUpdate()
                         ->count() + 1;
                 });
-                $invoice->invoice_number = 'INV-' . $date . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+
+                $invoice->invoice_number = 'INV-' . $date . '-' . str_pad((string) $count, 3, '0', STR_PAD_LEFT);
             }
         });
     }
