@@ -6,7 +6,6 @@ use App\Traits\BelongsToLab;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class Invoice extends Model
 {
